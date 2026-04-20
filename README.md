@@ -59,4 +59,4 @@ Minimal mobile file sharing app (sender/receiver code based) using Flutter, BLoC
 
 ## Video Demo
 
-[Open video in Google Drive](https://drive.google.com/file/d/1CXa3IRpMO46Hq2CoCMoI5Kait3osI52w/view?usp=sharing)
+[Open video in Google Drive](https://drive.google.com/file/d/1CXa3IRpMO46Hq2CoCMoI5Kait3osI52w/view?t=12.436)
