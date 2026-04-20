@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "88650922022",
+    "project_id": "neosapienshare",
+    "storage_bucket": "neosapienshare.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:88650922022:android:815d29f5948ff9de9a8ee7",
+        "android_client_info": {
+          "package_name": "com.example.neosapien"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDq1rvxQFud50hKZmj5I1EJfa-0O0GIJrU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:88650922022:android:398e1ca316b424a99a8ee7",
+        "android_client_info": {
+          "package_name": "io.notxndr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDq1rvxQFud50hKZmj5I1EJfa-0O0GIJrU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
