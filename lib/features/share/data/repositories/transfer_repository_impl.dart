@@ -137,45 +137,53 @@ class TransferRepositoryImpl implements TransferRepository {
     final transferId = _uuid.v4();
     final uploadedFiles = <TransferFileModel>[];
 
-    for (final file in files) {
-      final local = File(file.path);
-      final hash = await HashUtils.sha256File(local);
+    try {
+      for (final file in files) {
+        final local = File(file.path);
+        final hash = await HashUtils.sha256File(local);
 
-      final upload = await storage.uploadFile(
-        transferId: transferId,
-        fileId: file.id,
-        file: local,
-        onProgress: (progress) => onFileProgress(file.id, progress),
+        final upload = await storage.uploadFile(
+          transferId: transferId,
+          fileId: file.id,
+          file: local,
+          onProgress: (progress) => onFileProgress(file.id, progress),
+        );
+
+        uploadedFiles.add(
+          TransferFileModel(
+            id: file.id,
+            name: file.name,
+            size: file.size,
+            hash: hash,
+            url: upload.url,
+            objectPath: upload.objectPath,
+          ),
+        );
+      }
+
+      final now = DateTime.now().toUtc();
+      final transfer = TransferModel(
+        id: transferId,
+        senderCode: senderCode,
+        receiverCode: receiverCode,
+        files: uploadedFiles,
+        status: 'pending',
+        createdAt: now,
+        ttl: now.add(AppConfig.transferTtl),
       );
 
-      uploadedFiles.add(
-        TransferFileModel(
-          id: file.id,
-          name: file.name,
-          size: file.size,
-          hash: hash,
-          url: upload.url,
-        ),
+      final createdTransferId = await firestore.createTransfer(transfer);
+      await firestore.queueFcmTrigger(
+        receiverCode: receiverCode,
+        transferId: createdTransferId,
+        senderCode: senderCode,
       );
+    } catch (e) {
+      await _cleanupObjects(
+        uploadedFiles.map((f) => f.objectPath).whereType<String>().toList(),
+      );
+      rethrow;
     }
-
-    final now = DateTime.now().toUtc();
-    final transfer = TransferModel(
-      id: transferId,
-      senderCode: senderCode,
-      receiverCode: receiverCode,
-      files: uploadedFiles,
-      status: 'pending',
-      createdAt: now,
-      ttl: now.add(AppConfig.transferTtl),
-    );
-
-    final createdTransferId = await firestore.createTransfer(transfer);
-    await firestore.queueFcmTrigger(
-      receiverCode: receiverCode,
-      transferId: createdTransferId,
-      senderCode: senderCode,
-    );
   }
 
   @override
@@ -202,32 +210,79 @@ class TransferRepositoryImpl implements TransferRepository {
 
     final root = await _resolveDownloadDirectory();
     await root.create(recursive: true);
+    final objectPaths = transfer.files
+        .map(_resolveObjectPath)
+        .whereType<String>()
+        .toList();
 
-    await firestore.updateTransferStatus(transfer.id, 'receiving');
+    try {
+      await firestore.updateTransferStatus(transfer.id, 'receiving');
 
-    for (final file in transfer.files) {
-      if (file.url == null || file.url!.isEmpty) {
-        throw ValidationException('File URL missing for ${file.name}.');
+      for (final file in transfer.files) {
+        if (file.url == null || file.url!.isEmpty) {
+          throw ValidationException('File URL missing for ${file.name}.');
+        }
+
+        final targetPath = p.join(root.path, '${transfer.id}_${file.name}');
+        final target = File(targetPath);
+
+        await storage.downloadFile(
+          url: file.url!,
+          target: target,
+          onProgress: (progress) => onFileProgress(file.id, progress),
+        );
+
+        final actualHash = await HashUtils.sha256File(target);
+        if (actualHash != file.hash) {
+          await firestore.updateTransferStatus(transfer.id, 'corrupted');
+          throw HashMismatchException(
+            'Hash mismatch detected for ${file.name}.',
+          );
+        }
       }
 
-      final targetPath = p.join(root.path, '${transfer.id}_${file.name}');
-      final target = File(targetPath);
+      await firestore.updateTransferStatus(transfer.id, 'completed');
+      await localIdentity.markTransferProcessed(transfer.id);
+    } catch (_) {
+      await firestore.updateTransferStatus(transfer.id, 'failed');
+      rethrow;
+    } finally {
+      await _cleanupObjects(objectPaths);
+    }
+  }
 
-      await storage.downloadFile(
-        url: file.url!,
-        target: target,
-        onProgress: (progress) => onFileProgress(file.id, progress),
-      );
-
-      final actualHash = await HashUtils.sha256File(target);
-      if (actualHash != file.hash) {
-        await firestore.updateTransferStatus(transfer.id, 'corrupted');
-        throw HashMismatchException('Hash mismatch detected for ${file.name}.');
-      }
+  String? _resolveObjectPath(dynamic file) {
+    if (file is TransferFileModel &&
+        file.objectPath != null &&
+        file.objectPath!.isNotEmpty) {
+      return file.objectPath;
     }
 
-    await firestore.updateTransferStatus(transfer.id, 'completed');
-    await localIdentity.markTransferProcessed(transfer.id);
+    final dynamicObjectPath = (file as dynamic).objectPath as String?;
+    if (dynamicObjectPath != null && dynamicObjectPath.isNotEmpty) {
+      return dynamicObjectPath;
+    }
+
+    final url = (file as dynamic).url as String?;
+    if (url == null || url.isEmpty) return null;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return null;
+    final segments = uri.pathSegments;
+    final publicIndex = segments.indexOf('public');
+    if (publicIndex == -1 || publicIndex + 2 > segments.length) return null;
+
+    // Path format: /storage/v1/object/public/{bucket}/{objectPath...}
+    final objectSegments = segments.sublist(publicIndex + 2);
+    return objectSegments.join('/');
+  }
+
+  Future<void> _cleanupObjects(List<String> objectPaths) async {
+    if (objectPaths.isEmpty) return;
+    try {
+      await storage.deleteObjects(objectPaths.toSet().toList());
+    } catch (_) {
+      // Cleanup is best-effort to avoid masking transfer result paths.
+    }
   }
 
   @override

@@ -5,6 +5,7 @@ class TransferFileEntity {
   final String hash;
   final String? localPath;
   final String? url;
+  final String? objectPath;
 
   const TransferFileEntity({
     required this.id,
@@ -13,5 +14,6 @@ class TransferFileEntity {
     required this.hash,
     this.localPath,
     this.url,
+    this.objectPath,
   });
 }

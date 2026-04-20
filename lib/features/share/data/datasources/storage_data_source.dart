@@ -9,8 +9,9 @@ import '../../../../core/error/exceptions.dart';
 
 class UploadResult {
   final String url;
+  final String objectPath;
 
-  const UploadResult({required this.url});
+  const UploadResult({required this.url, required this.objectPath});
 }
 
 @lazySingleton
@@ -36,7 +37,17 @@ class StorageDataSource {
       onProgress(1);
 
       final url = bucket.getPublicUrl(objectPath);
-      return UploadResult(url: url);
+      return UploadResult(url: url, objectPath: objectPath);
+    } on StorageException catch (e) {
+      throw _mapStorageException(e);
+    }
+  }
+
+  Future<void> deleteObjects(List<String> objectPaths) async {
+    if (objectPaths.isEmpty) return;
+    final bucket = _supabase.storage.from(AppConfig.supabaseStorageBucket);
+    try {
+      await bucket.remove(objectPaths);
     } on StorageException catch (e) {
       throw _mapStorageException(e);
     }

@@ -8,6 +8,7 @@ class TransferFileModel extends TransferFileEntity {
     required super.hash,
     super.localPath,
     super.url,
+    super.objectPath,
   });
 
   factory TransferFileModel.fromMap(Map<String, dynamic> map) {
@@ -17,10 +18,18 @@ class TransferFileModel extends TransferFileEntity {
       size: (map['size'] as num).toInt(),
       hash: map['hash'] as String,
       url: map['url'] as String?,
+      objectPath: map['objectPath'] as String?,
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {'id': id, 'name': name, 'size': size, 'hash': hash, 'url': url};
+    return {
+      'id': id,
+      'name': name,
+      'size': size,
+      'hash': hash,
+      'url': url,
+      'objectPath': objectPath,
+    };
   }
 }
