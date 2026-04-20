@@ -57,8 +57,6 @@ Minimal mobile file sharing app (sender/receiver code based) using Flutter, BLoC
 - Receiver files are saved to Downloads directory.
 - Transfers are intended to be one-time.
 
-## Attached File Preview
+## Video Demo
 
-<iframe src="https://drive.google.com/file/d/1CXa3IRpMO46Hq2CoCMoI5Kait3osI52w/preview" width="100%" height="600" allow="autoplay"></iframe>
-
-[Open file in Google Drive](https://drive.google.com/file/d/1CXa3IRpMO46Hq2CoCMoI5Kait3osI52w/view?usp=sharing)
+[Open video in Google Drive](https://drive.google.com/file/d/1CXa3IRpMO46Hq2CoCMoI5Kait3osI52w/view?usp=sharing)
